@@ -29,7 +29,7 @@ bool number_to_digits(unsigned int number, unsigned char *digits, size_t count) 
     return true;
 }
 
-int weighted_sum_of_values(const int* values, const int *weigths, size_t count) {
+int weighted_sum_of_signed_values(const int* values, const int *weigths, size_t count) {
     int total = 0;
     for (size_t i = 0; i < count; i++) {
         total+=values[i]*weigths[i];
@@ -37,15 +37,19 @@ int weighted_sum_of_values(const int* values, const int *weigths, size_t count) 
     return total;
 }
 
-const int cpf_digits_weigths[3] = {2,3,4};
-const int cpf_second_digits_weigths[10] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+unsigned int weighted_sum_of_unsigned_values(const unsigned int* values, const unsigned int *weigths, size_t count) {
+    unsigned int total = 0;
+    for (size_t i = 0; i < count; i++) {
+        total+=values[i]*weigths[i];
+    }
+    return total;
+}
+
+const unsigned int cpf_digits_weigths[10] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
 
 typedef struct {
-    unsigned int as_uint;
-    unsigned int verifier_as_uint;
     unsigned int digits[11];
-    unsigned int verifier_digits[2];
-    
+    unsigned long int as_ulong;
 } cpf_t;
 
 bool number_to_uint_digits(unsigned int number, unsigned int* digits, size_t count) {
@@ -64,24 +68,23 @@ bool number_to_uint_digits(unsigned int number, unsigned int* digits, size_t cou
     return true;
 }
 
+// 0xFF: char, unsigned char
+// unsigned char: 0 -> 255
+// signed char: -127 -> 127
+
+
 cpf_t do_with_cpf(unsigned int cpf) {
     printf("cpf %i\n", cpf);
     assert(number_width(cpf) == 9);
-    cpf_t resulting_cpf = {.verifier_digits = {0xDEADBEEF,0xDEADBEEF}};
+    cpf_t resulting_cpf = {.as_ulong = 0};
     unsigned int *digits = resulting_cpf.digits;
     bool succeeded = number_to_uint_digits(cpf, digits, 9);
     assert(succeeded);
 
-    for (size_t i =0; i < 11; i++) {
-        printf("digit: %i\n", digits[i]);
-    }
-    unsigned int *result_digits = resulting_cpf.verifier_digits;
+    unsigned int result_digits[] = {0xDEADBEEF,0xDEADBEEF};
 
     // 1.
-    int sum_of_sums = 0;
-    sum_of_sums += weighted_sum_of_values(digits+0, cpf_digits_weigths, 3);
-    sum_of_sums += weighted_sum_of_values(digits+3, cpf_digits_weigths, 3);
-    sum_of_sums += weighted_sum_of_values(digits+6, cpf_digits_weigths, 3);
+    unsigned int sum_of_sums = weighted_sum_of_unsigned_values(digits, cpf_digits_weigths, 9);
 
     // 2.
     {
@@ -96,11 +99,11 @@ cpf_t do_with_cpf(unsigned int cpf) {
     digits[9]=result_digits[0];
 
     // 3.
-    int next_sum = weighted_sum_of_values(digits, cpf_second_digits_weigths, 10);
+    unsigned int next_sum = weighted_sum_of_unsigned_values(digits, cpf_digits_weigths, 10);
 
     // 4.
     {
-        int mod_11 = next_sum % 11;
+        unsigned int mod_11 = next_sum % 11;
         if (mod_11 == 0 || mod_11 == 1) {
             result_digits[1] = 0;
         } else { 
@@ -109,21 +112,10 @@ cpf_t do_with_cpf(unsigned int cpf) {
     }
     assert(result_digits[1] != 0xDEADBEEF);
     digits[10]=result_digits[1];
-
-    for (size_t i =0; i < 11; i++) {
-        printf("digit: %i\n", digits[i]);
-    }
-
-    resulting_cpf.as_uint = 0;
-    for (size_t i = 0; i < 11; i++) {
-        unsigned int current = resulting_cpf.as_uint;
-        resulting_cpf.as_uint = current*10 + digits[i];
-    }
     
-    resulting_cpf.verifier_as_uint = 0;
-    for (size_t i = 0; i < 2; i++) {
-        unsigned int current = resulting_cpf.verifier_as_uint;
-        resulting_cpf.verifier_as_uint = current*10 + result_digits[i];
+    for (size_t i = 0; i < 11; i++) {
+        unsigned long curr = resulting_cpf.as_ulong;
+        resulting_cpf.as_ulong = (curr * 10) + digits[i];
     }
 
     return resulting_cpf;
@@ -137,10 +129,11 @@ int main() {
   }
 
   switch (number_width(cpf_start_or_cpf)) {
-    case 9:
+    case 9: {
         cpf_t result = do_with_cpf(cpf_start_or_cpf);
-        printf("CPF é %i\n", result.as_uint);
+        printf("CPF é %lu\n", result.as_ulong);
         break;
+    }
     case 3:
     default:
       goto invalid_cpf;
