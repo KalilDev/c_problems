@@ -1,2 +1,2 @@
 #!/bin/sh
-gcc -O3 -lm lib/duration.c lib/conversion.c lib/arr_math.c lib/io_wrapper.c lib/vec_math.c $1.c -o $1
+gcc -O0 -lm lib/duration.c lib/conversion.c lib/arr_math.c lib/io_wrapper.c lib/vec_math.c $1.c -o $1

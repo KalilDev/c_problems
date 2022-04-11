@@ -40,22 +40,119 @@ void *safe_malloc_or_fail(size_t size)  {
 }
 
 #define __HEAP_ALLOC_CLEANUP_LABEL(name) free_HEAP_ALLOC_BLOCK_ ## name
-#define HEAP_ALLOC_BLOCK(type, name, count, block, allocator) \
+#define HEAP_ALLOC_BLOCK(type, name, block, allocate) \
 { \
     /* Essa label é declarada no comeco do bloco com o atributo
     __label__ para definir que ela só é valida dentro do bloco
     em que estamos */ \
     __label__ __HEAP_ALLOC_CLEANUP_LABEL(name);\
-    type *name = allocator(((size_t)count) * sizeof(type));\
+    type *name = allocate;\
     block;\
     __HEAP_ALLOC_CLEANUP_LABEL(name):\
     free(name);\
-};
+};\
 
-#define HEAP_SAFE_MALLOC_BLOCK(type, name, count, block) HEAP_ALLOC_BLOCK(type, name, count, block, safe_malloc_or_fail)
-#define HEAP_MALLOC_BLOCK(type, name, count, block) HEAP_ALLOC_BLOCK(type, name, count, block, malloc)
-#define HEAP_CALLOC_BLOCK(type, name, count, block) HEAP_ALLOC_BLOCK(type, name, count, block, calloc)
+#define HEAP_ALLOC_ALLOCATOR_BLOCK(type, name, count, block, allocator) \
+HEAP_ALLOC_BLOCK(type, name, block, allocator(((size_t)count) * sizeof(type)));
+
+#define HEAP_SAFE_MALLOC_BLOCK(type, name, count, block) HEAP_ALLOC_ALLOCATOR_BLOCK(type, name, count, block, safe_malloc_or_fail)
+#define HEAP_MALLOC_BLOCK(type, name, count, block) HEAP_ALLOC_ALLOCATOR_BLOCKHEAP_ALLOC_ALLOCATOR_BLOCK(type, name, count, block, malloc)
+#define HEAP_CALLOC_BLOCK(type, name, count, block) HEAP_ALLOC_ALLOCATOR_BLOCK(type, name, count, block, calloc)
 #define EXIT_HEAP_ALLOC_BLOCK(name) goto __HEAP_ALLOC_CLEANUP_LABEL(name);
+
+typedef struct linked_list_node {
+    struct linked_list_node *next;
+    void* element;
+} linked_list_node_t;
+
+linked_list_node_t *linked_list_node_create() {
+    linked_list_node_t *node = calloc(1, sizeof(linked_list_node_t));
+    return node;
+}
+
+typedef struct linked_list {
+    struct linked_list_node *start;
+} linked_list_t;
+
+linked_list_t linked_list_new() {
+    linked_list_t list = {.start = NULL};
+    return list;
+}
+
+size_t linked_list_length(linked_list_t *list) {
+    size_t length = 0;
+    for (linked_list_node_t *node = list->start; node; node = node->next) {
+        length++;
+    }
+    return length;
+}
+
+linked_list_node_t **linked_list_last_node(linked_list_t *list) {
+    printf("last: started\n");
+    linked_list_node_t **last_node = &list->start;
+    for (linked_list_node_t **node = last_node; *node; node = &(*node)->next) {
+        printf("last: moved once\n");
+        last_node = node;
+    }
+
+    return last_node;
+}
+
+void linked_list_add(linked_list_t *list, void *element) {
+    printf("&list: %p\n", list);
+    printf("&head_node: %p\n", list->start);
+    linked_list_node_t **slot = linked_list_last_node(list);
+    printf("&slot: %p\n", slot);
+    linked_list_node_t *node = linked_list_node_create();
+    node->element = element;
+    *slot = node;
+    printf("&node: %p\n", node);
+    assert(*slot != NULL);
+    printf("&slot: %p\n", *slot);
+
+}
+
+void linked_list_iterate(linked_list_t list, void for_each_element(void*)) {
+    printf("Gonna iterate\n");
+    for (linked_list_node_t **node = &list.start;*node;node = &(*node)->next) {
+        printf("Running for node\n");
+        linked_list_node_t *node_ref = *node;
+        printf("0\n");
+        printf("node_ref: %p\n", node_ref);
+        linked_list_node_t node_val = *node_ref;
+        printf("1\n");
+        void *node_element_ref = node_val.element;
+        printf("1\n");
+        for_each_element(node_element_ref);
+        printf("2\n");
+    }
+}
+
+void linked_list_delete(linked_list_t list, void element_delete(void*)) {
+    linked_list_node_t **node = &list.start;
+    while (node) {
+        { // Freeing the element and setting it to NULL
+            void** element = &(*node)->element;
+            element_delete(*element);
+            element = NULL;
+        }
+        linked_list_node_t ** prev_node = node;
+        // Iterate to the next node
+        node = &(*node)->next;
+        { // Freeing the prev node and setting it to NULL
+            free(prev_node);
+            prev_node = NULL;
+        }
+    }
+}
+
+void print_string(char* string) {
+    printf("%s\n", string);
+}
+
+void print_string_from_void_ptr(void* string) {
+    print_string(string);
+}
 
 START_QUESTS
 
@@ -178,6 +275,36 @@ QUEST(7, {
     })
     printf("A soma deles é %i\n", sum);
 })
+
+// Heap alloc em bloco separado com macro e saída anterior
+QUEST(8, {
+    unsigned char* pointers[8];
+    for (size_t i =0; i < 8; i++) {
+        unsigned char* string = pointers[i] = safe_malloc_or_fail(3*sizeof(unsigned char));
+        string[0] = 'A';
+        string[1] = 'b';
+        string[2] = '\0';
+    }
+    printf("0\n");
+    linked_list_t list = linked_list_new();
+    printf("1\n");
+    assert(linked_list_length(&list) == 0);
+    for (size_t i =0; i < 8; i++) {
+        printf("add\n");
+        unsigned char *ptr = pointers[i];
+        linked_list_add(&list, ptr);
+    }
+    printf("2\n");
+    printf("length: %lu\n", linked_list_length(&list));
+    assert(linked_list_length(&list) == 8);
+    printf("3\n");
+    linked_list_iterate(list, print_string_from_void_ptr);
+    printf("4\n");
+    linked_list_delete(list, free);
+    printf("5\n");
+    assert(linked_list_length(&list) == 0);
+})
+
 
 END_QUESTS
 
