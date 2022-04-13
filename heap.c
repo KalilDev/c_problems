@@ -165,7 +165,7 @@ QUEST(1, {
 QUEST(2, {
     int nums[3];
 
-    promt_ints_or_fail(nums, 3, decimal);
+    prompt_ints_or_fail(nums, 3, decimal);
     int sum = sum_of_ints(nums, 3);
     
     printf("A soma deles é %i\n", sum);
@@ -173,11 +173,11 @@ QUEST(2, {
 
 // Heap alloc basico
 QUEST(3, {
-    int quantos_numeros = promt_dint_or_fail();
+    int quantos_numeros = prompt_dint_or_fail();
     
     int *nums = safe_malloc_or_fail(quantos_numeros * sizeof(int));
 
-    promt_ints_or_fail(nums, quantos_numeros, decimal);
+    prompt_ints_or_fail(nums, quantos_numeros, decimal);
     int sum = sum_of_ints(nums, quantos_numeros);
     
     free(nums);
@@ -189,7 +189,7 @@ QUEST(3, {
 
 // Heap alloc em bloco separado para evitar problema anterior
 QUEST(4, {
-    int quantos_numeros = promt_dint_or_fail();
+    int quantos_numeros = prompt_dint_or_fail();
     
     int sum;
     // Bloco em que `nums` existe no heap e somos o dono dele.
@@ -205,7 +205,7 @@ QUEST(4, {
     {
         int *nums = safe_malloc_or_fail(quantos_numeros * sizeof(int));
 
-        promt_ints_or_fail(nums, quantos_numeros, decimal);
+        prompt_ints_or_fail(nums, quantos_numeros, decimal);
         // E se eu n quiser retornar a soma caso o primeiro numero seja 10?
         sum = sum_of_ints(nums, quantos_numeros);
         
@@ -216,12 +216,12 @@ QUEST(4, {
 
 // Heap alloc em bloco separado com saída antes do fim do bloco
 QUEST(5, {
-    int quantos_numeros = promt_dint_or_fail();
+    int quantos_numeros = prompt_dint_or_fail();
     
     int sum;
     {
         int *nums = safe_malloc_or_fail(quantos_numeros * sizeof(int));
-        promt_ints_or_fail(nums, quantos_numeros, decimal);
+        prompt_ints_or_fail(nums, quantos_numeros, decimal);
 
         const int primeiro_numero_proibido = 10;
         if (quantos_numeros > 0 && nums[0] == primeiro_numero_proibido) {
@@ -243,11 +243,11 @@ QUEST(5, {
 })
 // Heap alloc em bloco separado com macro
 QUEST(6, {
-    int quantos_numeros = promt_dint_or_fail();
+    int quantos_numeros = prompt_dint_or_fail();
     
     int sum;
     HEAP_SAFE_MALLOC_BLOCK(int, nums, quantos_numeros, {
-        promt_ints_or_fail(nums, quantos_numeros, decimal);
+        prompt_ints_or_fail(nums, quantos_numeros, decimal);
         sum = sum_of_ints(nums, quantos_numeros);
     })
     printf("A soma deles é %i\n", sum);
@@ -255,11 +255,11 @@ QUEST(6, {
 
 // Heap alloc em bloco separado com macro e saída anterior
 QUEST(7, {
-    int quantos_numeros = promt_dint_or_fail();
+    int quantos_numeros = prompt_dint_or_fail();
     
     int sum;
     HEAP_SAFE_MALLOC_BLOCK(int, nums, quantos_numeros, {
-        promt_ints_or_fail(nums, quantos_numeros, decimal);
+        prompt_ints_or_fail(nums, quantos_numeros, decimal);
 
         const int primeiro_numero_proibido = 10;
         if (quantos_numeros > 0 && nums[0] == primeiro_numero_proibido) {

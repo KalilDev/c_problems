@@ -5,39 +5,49 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include "fallible.h"
 
 typedef enum {
-    decimal_or_octal,
-    decimal,
-    octal,
+    int_decimal_octal_or_hexadecimal,
+    int_decimal,
 } read_int_format;
 
-typedef struct {
-    float value;
-    bool error;
-} read_float_result_t;
+typedef enum {
+    uint_hexadecimal,
+    uint_decimal,
+    uint_octal,
+} read_uint_format;
 
-typedef struct {
-    int value;
-    bool error;
-} read_int_result_t;
+DEFINE_MAYBE_STRUCT_OF(float)
 
-read_float_result_t read_float();
+DEFINE_MAYBE_STRUCT_OF(int)
 
-read_int_result_t read_int(read_int_format format);
+typedef unsigned int uint;
+DEFINE_MAYBE_STRUCT_OF(uint)
 
-float read_float_or_fail();
+#define DEFINE_FALLIBLE_FUNCTION_AND_FUNCTION_OR_FAIL_SIGNATURES(type, name, arguments) \
+FALLIBLE_FUNCTION_SIGNATURE(type, name, arguments);\
+FALLIBLE_FUNCTION_OR_FAIL_SIGNATURE(type, name, arguments);
 
-int read_int_or_fail(read_int_format format);
+DEFINE_FALLIBLE_FUNCTION_AND_FUNCTION_OR_FAIL_SIGNATURES(float, read_float, ());
+DEFINE_FALLIBLE_FUNCTION_AND_FUNCTION_OR_FAIL_SIGNATURES(float, prompt_float, ());
+DEFINE_FALLIBLE_FUNCTION_AND_FUNCTION_OR_FAIL_SIGNATURES(void, prompt_floats, (float *out, size_t count));
 
-int promt_int_or_fail(read_int_format format);
+DEFINE_FALLIBLE_FUNCTION_AND_FUNCTION_OR_FAIL_SIGNATURES(int, read_int, (read_int_format format));
+DEFINE_FALLIBLE_FUNCTION_AND_FUNCTION_OR_FAIL_SIGNATURES(int, prompt_int, (read_int_format format));
+DEFINE_FALLIBLE_FUNCTION_AND_FUNCTION_OR_FAIL_SIGNATURES(void, prompt_ints, (int *out, size_t count, read_int_format format));
 
-void promt_ints_or_fail(int *out, size_t count, read_int_format format);
+DEFINE_FALLIBLE_FUNCTION_AND_FUNCTION_OR_FAIL_SIGNATURES(uint, read_uint, (read_uint_format format));
+DEFINE_FALLIBLE_FUNCTION_AND_FUNCTION_OR_FAIL_SIGNATURES(uint, prompt_uint, (read_uint_format format));
+DEFINE_FALLIBLE_FUNCTION_AND_FUNCTION_OR_FAIL_SIGNATURES(void, prompt_uints, (uint *out, size_t count, read_uint_format format));
 
-void promt_floats_or_fail(float *out, size_t count);
 
-int promt_dint_or_fail();
+DEFINE_FALLIBLE_FUNCTION_AND_FUNCTION_OR_FAIL_SIGNATURES(int, read_dint, ());
+DEFINE_FALLIBLE_FUNCTION_AND_FUNCTION_OR_FAIL_SIGNATURES(int, prompt_dint, ());
+DEFINE_FALLIBLE_FUNCTION_AND_FUNCTION_OR_FAIL_SIGNATURES(void, prompt_dints, (int *out, size_t count));
 
-float promt_float_or_fail();
+DEFINE_FALLIBLE_FUNCTION_AND_FUNCTION_OR_FAIL_SIGNATURES(uint, read_duint, ());
+DEFINE_FALLIBLE_FUNCTION_AND_FUNCTION_OR_FAIL_SIGNATURES(uint, prompt_duint, ());
+DEFINE_FALLIBLE_FUNCTION_AND_FUNCTION_OR_FAIL_SIGNATURES(void, prompt_duints, (uint *out, size_t count));
 
 #endif

@@ -32,7 +32,7 @@ unsigned int fib(unsigned int x) {
 }
 
 int main() {
-    int numero_n = promt_dint_or_fail();
+    int numero_n = prompt_dint_or_fail();
     if (numero_n <= 2) {
         fputs("O numero não é maior que dois!\n", stderr);
         return 1;

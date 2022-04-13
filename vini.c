@@ -13,6 +13,7 @@
 #include "lib/vec_math.h"
 #include "lib/arr_math.h"
 #include "lib/io_wrapper.h"
+#include "lib/fallible.h"
 
 #define SQUARE(num) (num*num)
 
@@ -79,30 +80,30 @@ bool number_to_digits(unsigned int number, unsigned char *digits, size_t count) 
 START_QUESTS
 
 QUEST(1, {
-    int number = promt_dint_or_fail();
+    int number = prompt_dint_or_fail();
     printf("%d\n", number);
 })
 
 QUEST(2, {
-    float number = promt_float_or_fail();
+    float number = prompt_float_or_fail();
     printf("%f\n", number);
 })
 
 QUEST(3, {
     int nums[3];
-    promt_ints_or_fail(nums, 3, decimal);
+    prompt_dints_or_fail(nums, 3);
     int sum = sum_of_ints(nums, 3);
     printf("A soma deles é %i\n", sum);
 })
 
 QUEST(4, {
-    float numero = promt_float_or_fail();
+    float numero = prompt_float_or_fail();
 
     printf("O quadrado dele é %f\n", SQUARE(numero));
 })
 
 QUEST(5, {
-    float numero = promt_float_or_fail();
+    float numero = prompt_float_or_fail();
 
     printf("O quinto dele é %f\n", numero/5.0);
 })
@@ -131,14 +132,14 @@ AREA_CONVERSION_PAIR_QUESTION(26, 27, m_2, hec);
 
 QUEST(28, {
     float nums[3];
-    promt_floats_or_fail(nums, 3);
+    prompt_floats_or_fail(nums, 3);
     float sum_of_squares = sum_of_squares_of_floats(nums, 3);
     printf("A soma do quadrado deles é %f\n", sum_of_squares);
 })
 
 QUEST(29, {
     float nums[4];
-    promt_floats_or_fail(nums, 4);
+    prompt_floats_or_fail(nums, 4);
     float avg = avg_of_floats(nums, 4);
     printf("A média das notas é %f\n", avg);
 })
@@ -154,7 +155,7 @@ QUEST(30, {
 })
 
 QUEST(31, {
-    int num = promt_dint_or_fail();
+    int num = prompt_dint_or_fail();
     int antecessor = num-1;
     int sucessor = num+1;
 
@@ -162,7 +163,7 @@ QUEST(31, {
 })
 
 QUEST(32, {
-    int num = promt_dint_or_fail();
+    int num = prompt_dint_or_fail();
     int antecessor_do_dobro = (num*2)-1;
     int sucessor_do_triplo = (num*3)+1;
 
@@ -173,20 +174,20 @@ QUEST(32, {
 
 
 QUEST(33, {
-    float lado = promt_float_or_fail();
+    float lado = prompt_float_or_fail();
 
     printf("A área do quadrado é %f\n", SQUARE(lado));
 })
 
 QUEST(34, {
-    float raio = promt_float_or_fail();
+    float raio = prompt_float_or_fail();
 
     printf("A área do círculo é %f\n", area_de_circulo(raio));
 })
 
 QUEST(35, {
     float catetos[2];
-    promt_floats_or_fail(catetos, 2);
+    prompt_floats_or_fail(catetos, 2);
 
 
     printf("A hipotenusa é %f\n", hipotenusa_de_catetos(catetos[0], catetos[1]));
@@ -204,7 +205,7 @@ QUEST(36, {
 })
 
 QUEST(37, {
-    float valor = promt_float_or_fail();
+    float valor = prompt_float_or_fail();
     const float desconto = 0.12;
     float valor_final = valor - (valor*desconto);
     
@@ -212,7 +213,7 @@ QUEST(37, {
 })
 
 QUEST(38, {
-    float salario = promt_float_or_fail();
+    float salario = prompt_float_or_fail();
     const float aumento = 0.25;
 
     float salario_final = salario + (salario*aumento);
@@ -236,7 +237,7 @@ QUEST(39, {
 QUEST(40, {
     const float diaria = 30.0;
     const float fator_com_imposto = 1.08;
-    int dias = promt_dint_or_fail();
+    int dias = prompt_dint_or_fail();
 
     float diarias = diaria * dias;
     float diarias_com_imposto = diarias/fator_com_imposto;
@@ -245,8 +246,8 @@ QUEST(40, {
 })
 
 QUEST(41, {
-    float valor_hora = promt_float_or_fail();
-    int horas = promt_dint_or_fail();
+    float valor_hora = prompt_float_or_fail();
+    int horas = prompt_dint_or_fail();
     
     const float fator = 1.1;
 
@@ -256,7 +257,7 @@ QUEST(41, {
 })
 
 QUEST(42, {
-    float salario_base = promt_float_or_fail();
+    float salario_base = prompt_float_or_fail();
     
     const float fator_gratificado = 1.05;
     const float fator_depois_imposto = 0.93;
@@ -267,7 +268,7 @@ QUEST(42, {
 })
 
 QUEST(43, {
-    float valor_base = promt_float_or_fail();
+    float valor_base = prompt_float_or_fail();
     
     const float fator_com_10_desconto = 0.9;
     const float um_terco = 1.0/3.0;
@@ -292,7 +293,7 @@ QUEST(44, {
 })
 
 QUEST(45, {
-    int character = promt_dint_or_fail();
+    int character = prompt_dint_or_fail();
     if (character > 0xff) {
         puts("Caractere n é ascii!");
     } else {
@@ -302,7 +303,7 @@ QUEST(45, {
 })
 
 QUEST(46, {
-    int number = promt_dint_or_fail();
+    int number = prompt_dint_or_fail();
     if (number<100 || number > 999) {
         puts("Numero não tem 3 digitos!");
     } else {
@@ -312,7 +313,7 @@ QUEST(46, {
 })
 
 QUEST(47, {
-    int number = promt_dint_or_fail();
+    int number = prompt_dint_or_fail();
     if (number<1000 || number > 9999) {
         puts("Numero não tem 4 digitos!");
     } else {
@@ -326,7 +327,7 @@ QUEST(47, {
 })
 
 QUEST(48, {
-    int segundos = promt_dint_or_fail();
+    int segundos = prompt_dint_or_fail();
     duration_t duration = duration_from_seconds(segundos);
     unsigned int minutos = duration_as_minutes(duration);
     unsigned int horas =  duration_as_hours(duration);
@@ -335,20 +336,20 @@ QUEST(48, {
 
 QUEST(49, {
     puts("Digite o inicio em h m s e a duracao em s");
-    unsigned int horas = read_int_or_fail(decimal);
-    unsigned int minutos = read_int_or_fail(decimal);
-    unsigned int segundos = read_int_or_fail(decimal);
+    int horas = read_dint_or_fail();
+    int minutos = read_dint_or_fail();
+    int segundos = read_dint_or_fail();
     
     duration_t experiment_start = duration_from_components(segundos, minutos, horas);
-    unsigned int duration_seconds = read_int_or_fail(decimal);
+    int duration_seconds = read_dint_or_fail();
 
     duration_t experiment_duration = duration_from_seconds(duration_seconds);
 
     duration_t experiment_end = experiment_start+experiment_duration;
 
-    unsigned int end_s;
-    unsigned int end_m;
-    unsigned int end_h;
+    int end_s;
+    int end_m;
+    int end_h;
 
     duration_to_components(experiment_end, &end_s, &end_m, &end_h);
     printf("O final do experimento é às %ih %im %is\n", end_h, end_m, end_s);
@@ -356,8 +357,8 @@ QUEST(49, {
 
 QUEST(50, {
     puts("Digite ano de nascimento e o ano atual.");
-    int idade = read_int_or_fail(decimal);
-    int ano_atual = read_int_or_fail(decimal);
+    int idade = read_dint_or_fail();
+    int ano_atual = read_dint_or_fail();
 
     int ano_nascimento = ano_atual - idade;
 
@@ -366,7 +367,7 @@ QUEST(50, {
 
 QUEST(51, {
     float coords[2];
-    promt_floats_or_fail(coords, 2);
+    prompt_floats_or_fail(coords, 2);
     vec2f point = vec2f_from_coords(coords);
     float distance = vec2f_distance(point);
 
@@ -376,8 +377,8 @@ QUEST(51, {
 QUEST(52, {
     // Poderia ser 3 arrays e usar a versão restrict de divide_floats_to e multiply_floats_to.
     float invested[3];
-    promt_floats_or_fail(invested, 3);
-    float valor_loteria = promt_float_or_fail();
+    prompt_floats_or_fail(invested, 3);
+    float valor_loteria = prompt_float_or_fail();
 
     float invested_total = sum_of_floats(invested, 3);
     // Pegar a fracao de cada investidor e salvar em invested
@@ -391,8 +392,8 @@ QUEST(52, {
 
 QUEST(53, {
     float dimensions[2];
-    promt_floats_or_fail(dimensions, 2);
-    float preco_metro = promt_float_or_fail();
+    prompt_floats_or_fail(dimensions, 2);
+    float preco_metro = prompt_float_or_fail();
     
     float area = dimensions[0]*dimensions[1];
     float preco = area/preco_metro;

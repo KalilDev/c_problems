@@ -1,2 +1,6 @@
 #!/bin/sh
-gcc -O0 -lm lib/duration.c lib/conversion.c lib/arr_math.c lib/io_wrapper.c lib/vec_math.c $1.c -o $1
+MAYBE_FALLIBLE_MAIN=""
+if [[ $1 == fallible_* ]]; then
+    MAYBE_FALLIBLE_MAIN="lib/fallible_main.c"
+fi;
+gcc -O0 -lm $MAYBE_FALLIBLE_MAIN lib/fallible.c lib/string_view.c lib/duration.c lib/conversion.c lib/arr_math.c lib/io_wrapper.c lib/vec_math.c $1.c -o $1
