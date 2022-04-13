@@ -90,6 +90,7 @@ FALLIBLE_FUNCTION(value, fallible_function, (int input), {
 
 
 // How this representation works:
+// * the length & 0xff must be equal to 0xff
 // * the length must be less than size_t >> 8
 // * the actual length is length >> 8
 // * there are no guarantees whether it has or not an NULL terminator.
@@ -132,9 +133,9 @@ FALLIBLE_FUNCTION(heap_memory, fallible_realloc, (heap_memory ptr, size_t size),
 
 size_t actual_string_view_length(actual_string_view_t sv) {
     // * the length must be less than size_t >> 8
-    assert((sv.length & 0xff) == 0);
-    // * the actual length is length >> 8
-    return sv.length >> 8;
+    assert((sv.length & 0xff) == 0xFF);
+    // * the actual length is (length ^ 0xFF) >> 8
+    return (sv.length ^ 0xFF) >> 8;
 }
 
 typedef struct MAYBE_STRUCT_OF_NAME(void) {
@@ -154,6 +155,8 @@ typedef struct string_view_as_cstring {
     string_view_as_cstring_destructor destructor;
 } string_view_as_cstring_t;
 
+DEFINE_MAYBE_STRUCT_OF(string_view_as_cstring_t)
+
 void string_view_as_cstring_destroy(string_view_as_cstring_t *value) {
     string_view_as_cstring_destructor destructor = value->destructor;
     if (destructor == NULL) {
@@ -168,11 +171,12 @@ FALLIBLE_FUNCTION(heap_string, actual_string_view_to_c_string, (actual_string_vi
     size_t heap_length = length + 1;
     
     UNWRAP_OTHER(heap_memory, resulting_memory, fallible_malloc(heap_length * sizeof(unsigned char)));
-    UNWRAP_VOID(do_stuff(10));
 
     heap_string result = resulting_memory;
     // * there are no guarantees whether it has or not an NULL terminator.
     result[length] = '\0';
+    // TODO: Copy string from the buff
+
     RETURN_SUCCESS(result);
 })
 
@@ -187,7 +191,7 @@ typedef struct small_string {
     } storage;
 } small_string_t;
 
-char *small_string_to_c_string(small_string_t *small_string) {
+char *small_string_as_cstring(small_string_t *small_string) {
     return small_string->storage.char_buff;
 }
 unsigned char small_string_length(small_string_t *small_string) {
@@ -214,11 +218,98 @@ typedef struct string_view {
 static_assert(sizeof(actual_string_view_t) == sizeof(small_string_t), "For string_view_t to work, actual_string_view_t and small_string_t must have the same size");
 static_assert(_Alignof(actual_string_view_t) == _Alignof(small_string_t), "For string_view_t to work, actual_string_view_t and small_string_t must have the same alignment");
 
+const size_t small_string_max_length = 15;
+
+
+small_string_t small_string_from_cstring(char *buff, size_t size) {
+    // The null char does not count to the length of the string view 
+    size_t length = size - 1;
+    assert(length <= small_string_max_length);
+
+    small_string_t result;
+    char *tgt_buff = result.storage.char_buff;
+
+    unsigned char last_char;
+    if (length == small_string_max_length) {
+        // * if the length is 15, the last character MUST be \0
+        last_char = '\0';
+    } else {
+        // * if the length is less than 15, the last character is the length,
+        //   and the string contains an null terminator at char_buff[length]
+        last_char = (unsigned char)length;
+    }
+    
+    tgt_buff[15] = last_char;
+    
+    // TODO: Copy to buff from the cstring;
+
+    return result;
+}
+
+actual_string_view_t actual_string_view_from_cstring(char *buff, size_t size) {
+    actual_string_view_t result = {
+        .start = buff,
+        // The null char does not count to the length of the string view 
+        .length = ((size - 1) << 8) | 0xFF,
+    };
+    return result;
+}
+
+string_view_t string_view_from_cstring(char *buff, size_t size) {
+    string_view_t result;
+    // The null char does not count to the length of the string view 
+    size_t view_length = size - 1;
+    if (view_length <= small_string_max_length) {
+        result.detail.small_string = small_string_from_cstring(buff, size);
+        return result;
+    }
+    result.detail.actual = actual_string_view_from_cstring(buff, size);
+    return result;
+}
+
+bool string_view_is_small_string(string_view_t *view) {
+    size_t as_actual_length = view->detail.actual.length;
+    if ((as_actual_length & 0xFF) == 0xFF) {
+        return false;
+    }
+    return true;
+}
+
+size_t string_view_length(string_view_t *view) {
+    if (string_view_is_small_string(view)) {
+        return small_string_length(&view->detail.small_string);
+    }
+    return actual_string_view_length(view->detail.actual);
+}
+
+void free_actual_string_c_string(char *buff) {
+    // TODO: check that this came from an actual_string_view_to_c_string
+    free(buff);
+}
+
+FALLIBLE_FUNCTION(string_view_as_cstring_t, string_view_to_cstring, (string_view_t *view), {
+    string_view_as_cstring_t result;
+    if (string_view_is_small_string(view)) {
+        result.as_cstring = small_string_as_cstring(&view->detail.small_string);
+        result.destructor = NULL;
+        RETURN_SUCCESS(result);
+    }
+    UNWRAP_OTHER(heap_string, string_buff, actual_string_view_to_c_string(view->detail.actual));
+    result.as_cstring = string_buff;
+    result.destructor = free_actual_string_c_string;
+    RETURN_SUCCESS(result);
+})
 
 DEFINE_MAYBE_STRUCT_OF(int)
 
 FALLIBLE_FUNCTION(int, fallible_main, (int argc, char** argv), {
-    
+    puts("Hello world!");
+    puts("I will fail if the second arg is boom");
+    if (argc>1 && strcmp(argv[1], "boom") == 0) {
+        fputs("Kaboom!!\n", stderr);
+        RETURN_FAILURE();
+    }
+    RETURN_SUCCESS(0);
 });
 
 int main(int argc, char** argv) {
