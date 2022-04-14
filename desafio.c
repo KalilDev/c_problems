@@ -123,7 +123,7 @@ cpf_t do_with_cpf(unsigned int cpf) {
 
 int main() {
   puts("Digite o CPF sem os digitos verificadores:");
-  int cpf_start_or_cpf = read_int_or_fail(decimal);
+  int cpf_start_or_cpf = read_duint_or_fail();
   if (cpf_start_or_cpf <= 0) {
       goto invalid_cpf;
   }
