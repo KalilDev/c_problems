@@ -3,10 +3,15 @@
 #include <assert.h>
 
 size_t actual_string_view_length(actual_string_view_t sv) {
-    // * the length must be less than size_t >> 8
-    assert((sv.length & 0xff) == 0xFF);
-    // * the actual length is (length ^ 0xFF) >> 8
+    // * the flag is length & 0xff
+    // * the flag must be equal to ACTUAL_STRING_VIEW_FLAG
+    assert((sv.length & 0xff) == ACTUAL_STRING_VIEW_FLAG);
+    // * the actual length is (length ^ 0xff) >> 8
     return (sv.length ^ 0xFF) >> 8;
+}
+
+string_view_flag_t actual_string_view_flag(actual_string_view_t *sv) {
+    return (string_view_flag_t)(sv->length & 0xFF);
 }
 
 void string_view_as_cstring_destroy(string_view_as_cstring_t *value) {
@@ -32,9 +37,14 @@ FALLIBLE_FUNCTION(heap_string, actual_string_view_to_c_string, (actual_string_vi
     RETURN_SUCCESS(result);
 });
 
+string_view_flag_t small_string_flag(small_string_t *st) {
+    return st->storage.char_buff[SMALL_STRING_MAX_LENGTH];
+}
+
 char *small_string_as_cstring(small_string_t *small_string) {
     return small_string->storage.char_buff;
 }
+
 unsigned char small_string_length(small_string_t *small_string) {
     unsigned char last_char = small_string->storage.char_buff[15];
     // * if the length is 15, the last character MUST be \0
@@ -46,6 +56,28 @@ unsigned char small_string_length(small_string_t *small_string) {
     assert(last_char < 15);
     assert(small_string->storage.char_buff[last_char] == '\0');
     return last_char;
+}
+
+string_view_flag_t string_view_flag(string_view_t *sv) {
+    string_view_flag_t result_from_actual = actual_string_view_flag(&sv->detail.actual);
+    string_view_flag_t result_from_small = small_string_flag(&sv->detail.small_string);
+    assert(result_from_actual == result_from_small);
+    return result_from_small;
+}
+
+
+string_view_flag_kind_t string_view_flag_kind_from_flag(string_view_flag_t flag) {
+    if (flag == '\0' || flag < SMALL_STRING_MAX_LENGTH) {
+        return small_string_view_flag_kind;
+    }
+    if (flag == ACTUAL_STRING_VIEW_FLAG) {
+        return actual_string_view_flag_kind;
+    }
+    return invalid_string_view_flag_kind;
+}
+
+string_view_flag_kind_t string_view_flag_kind_sv(string_view_t *sv) {
+    return string_view_flag_kind_from_flag(string_view_flag(sv));
 }
 
 small_string_t small_string_from_cstring(char *buff, size_t size) {
@@ -77,7 +109,7 @@ actual_string_view_t actual_string_view_from_cstring(char *buff, size_t size) {
     actual_string_view_t result = {
         .start = buff,
         // The null char does not count to the length of the string view 
-        .length = ((size - 1) << 8) | 0xFF,
+        .length = ((size - 1) << 8) | ACTUAL_STRING_VIEW_FLAG,
     };
     return result;
 }
@@ -94,19 +126,12 @@ string_view_t string_view_from_cstring(char *buff, size_t size) {
     return result;
 }
 
-bool string_view_is_small_string(string_view_t *view) {
-    size_t as_actual_length = view->detail.actual.length;
-    if ((as_actual_length & 0xFF) == 0xFF) {
-        return false;
-    }
-    return true;
-}
-
 size_t string_view_length(string_view_t *view) {
-    if (string_view_is_small_string(view)) {
-        return small_string_length(&view->detail.small_string);
+    switch (string_view_flag_kind_sv(view)) {
+        case small_string_view_flag_kind: return small_string_length(&view->detail.small_string);
+        case invalid_string_view_flag_kind: failf("Invalid flag on the string view at %p. The flag was %x.", view, string_view_flag(view));
+        case actual_string_view_flag_kind: return actual_string_view_length(view->detail.actual);
     }
-    return actual_string_view_length(view->detail.actual);
 }
 
 void free_actual_string_c_string(char *buff) {
@@ -116,13 +141,18 @@ void free_actual_string_c_string(char *buff) {
 
 FALLIBLE_FUNCTION(string_view_as_cstring_t, string_view_to_cstring, (string_view_t *view), {
     string_view_as_cstring_t result;
-    if (string_view_is_small_string(view)) {
-        result.as_cstring = small_string_as_cstring(&view->detail.small_string);
-        result.destructor = NULL;
-        RETURN_SUCCESS(result);
+    switch (string_view_flag_kind_sv(view)) {
+        case small_string_view_flag_kind: {
+            result.as_cstring = small_string_as_cstring(&view->detail.small_string);
+            result.destructor = NULL;
+            RETURN_SUCCESS(result);
+        }
+        case invalid_string_view_flag_kind: failf("Invalid flag on the string view at %p. The flag was %x.", view, string_view_flag(view));
+        case actual_string_view_flag_kind: {
+            UNWRAP_ASSIGN(heap_string, string_buff, actual_string_view_to_c_string(view->detail.actual));
+            result.as_cstring = string_buff;
+            result.destructor = free_actual_string_c_string;
+            RETURN_SUCCESS(result);
+        }
     }
-    UNWRAP_ASSIGN(heap_string, string_buff, actual_string_view_to_c_string(view->detail.actual));
-    result.as_cstring = string_buff;
-    result.destructor = free_actual_string_c_string;
-    RETURN_SUCCESS(result);
 })

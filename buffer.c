@@ -17,18 +17,17 @@
 #include "lib/arr_math.h"
 #include "lib/io_wrapper.h"
 
-#ifndef NDEBUG
-    #define BUFF_T_USE_BUFF_PTR_T
-    #define BUFF_T_UNINITIALIZED_PATTERN
-    #define BUFF_T_STORE_VERSION
-    #define BUFF_BUFF_PTR_T_CHECK_ELEMENT_SIZE
-#endif
+//#define BUFF_T_USE_BUFF_PTR_T
+//#define BUFF_T_UNINITIALIZED_PATTERN
+//#define BUFF_T_STORE_VERSION
+//#define BUFF_BUFF_PTR_T_CHECK_ELEMENT_SIZE
+
 
 
 typedef unsigned char byte;
 const unsigned char bits_in_byte = 8;
 
-#ifdef BUFF_T_USE_BUFF_PTR_T
+#ifdef BUFF_STORAGE_PTR_T_CHECK_VALID_VERSION
     #ifndef BUFF_T_STORE_VERSION
     static_assert(0, "To use buff_ptr_t, BUFF_T_STORE_VERSION must be defined")
     #endif
@@ -66,6 +65,7 @@ typedef struct buff {
     size_t capacity;
 #ifdef BUFF_T_STORE_VERSION
     size_t storage_version;
+    size_t valid_storage_version;
 #endif
 } buff_t;
 
@@ -80,58 +80,60 @@ buff_t buff_create() {
         .capacity = 0,
     #ifdef BUFF_T_STORE_VERSION
         .storage_version = 0,
+        .valid_storage_version = 0,
     #endif
     };
     return result;
 }
 
 
-#ifdef BUFF_T_USE_BUFF_PTR_T
-typedef struct {
-    buff_t *buff;
-    size_t i;
-#ifdef BUFF_BUFF_PTR_T_CHECK_ELEMENT_SIZE
-    size_t size_of_element;
-#endif
-} buff_ptr_t;
+typedef struct buff_ptr {
+    #ifdef BUFF_STORAGE_PTR_T_CHECK_VALID_VERSION
+    buff_t *origin_buff;
+    size_t storage_version;
+    #endif
+    void *storage;
+} buff_storage_ptr_t;
 
-buff_ptr_t buff_ptr_to_ith_element(buff_t *buff, size_t i, size_t size_of_element) {
-    buff_ptr_t result = {
-        .buff = buff,
-        .i = i,
-#ifdef BUFF_BUFF_PTR_T_CHECK_ELEMENT_SIZE
-        .size_of_element = size_of_element,
-#endif
+buff_storage_ptr_t buff_storage_ptr_from_buff(buff_t *buff) {
+    buff_storage_ptr_t result = {
+        #ifdef BUFF_STORAGE_PTR_T_CHECK_VALID_VERSION
+        .origin_buff = buff,
+        .storage_version = buff->valid_storage_version,
+        #endif
+        .storage = buff->storage,
     };
     return result;
 }
-buff_ptr_t buff_ptr_to_ith_byte(buff_t *buff, size_t i) {
-    return buff_ptr_to_ith_element(buff, i, sizeof(byte));
+void *buff_storage_ptr_to_storage_ptr(buff_storage_ptr_t ptr) {
+    return ptr.storage;
 }
-void *buff_ptr_to_ptr_checked(buff_ptr_t ptr, size_t size_of_element) {
-    #ifdef BUFF_BUFF_PTR_T_CHECK_ELEMENT_SIZE
-    assert(ptr.size_of_element == size_of_element);
-    #endif
-    return ptr.buff->storage+ptr.i;
+
+void *buff_storage_from_buff(buff_t *buff) {
+    return buff->storage;
 }
-void *buff_ptr_to_ptr(buff_ptr_t ptr) {
-    return ptr.buff->storage+ptr.i;
+
+#define buff_ptr_from(buff_ptr) buff_storage_ptr_from_buff(buff_ptr)
+
+#ifdef BUFF_STORAGE_PTR_T_CHECK_VALID_VERSION
+void *buff_storage_ptr_t_to_ptr_checked(buff_storage_ptr_t ptr) {
+    assert(ptr.origin_buff->valid_storage_version == ptr.storage_version);
+    return buff_storage_ptr_to_storage_ptr(ptr);
 }
-#define buff_ptr_to_type(buff, type, index) buff_ptr_to_ith_element(buff, sizeof(type)*index, sizeof(type))
-#ifdef BUFF_BUFF_PTR_T_CHECK_ELEMENT_SIZE
-    #define buff_ptr_to_ptr_type(buff_ptr, index) (type *)buff_ptr_to_ptr_checked(buff_ptr, sizeof(type))
+    #define buff_storage_from_buff_ptr(buff_storage_ptr) buff_storage_ptr_t_to_ptr_checked(buff_storage_ptr)
 #else
-    #define buff_ptr_to_ptr_type(buff_ptr, index) (type *)buff_ptr_to_ptr(buff_ptr)
-#endif
-#define buff_ptr_deref_type(buff_ptr, type) *buff_ptr_to_ptr_type(buff_ptr, type)
+    #define buff_storage_from_buff_ptr(buff_storage_ptr) buff_storage_ptr_t_to_ptr(buff_storage_ptr)
 #endif
 
 void buff_debug_set_uninitialized_to_pattern(buff_t* buffer) {
-    size_t unused_capacity = buffer->capacity - buffer->length;
-    byte *storage = buffer->storage;
-    for (size_t i = buffer->length; i < unused_capacity;i++) {
-        byte pattern_piece = unused_capacity_pattern[i%unused_capacity_pattern_length];
-        storage[i] = pattern_piece;
+    size_t cap = buffer->capacity;
+    size_t len = buffer->length;
+    assert(cap >= len);
+    byte *start = buffer->storage + len;
+    byte *end = buffer->storage + cap;
+    for (byte *mem_it = start, pat_i = 0; mem_it != end; mem_it++, pat_i = (pat_i + 1) % unused_capacity_pattern_length) {
+        byte pattern_piece = unused_capacity_pattern[pat_i];
+        *mem_it = pattern_piece;
     }
 }
 
@@ -157,10 +159,11 @@ bool buff_ensure_capacity(buff_t *buffer, size_t desired_capacity) {
     if (previous_storage != buffer->storage) {
         buffer->storage_version++;
     }
+    buffer->valid_storage_version++;
     #endif
-    #ifdef BUFF_T_UNINITIALIZED_PATTERN
+    //#ifdef BUFF_T_UNINITIALIZED_PATTERN
     buff_debug_set_uninitialized_to_pattern(buffer);
-    #endif
+    //#endif
     return true;
 
     allocation_failure:
@@ -171,10 +174,17 @@ void buff_debug_fprintf(buff_t* buff, FILE * restrict file) {
     fprintf(file, "buffer_t {.length=%lu, .capacity=%lu", buff->length, buff->capacity);
     #ifdef BUFF_T_STORE_VERSION
     fprintf(file, ", .storage_version=%lu", buff->storage_version);
+    fprintf(file, ", .valid_storage_version=%lu", buff->storage_version);
     #endif
     fprintf(file, ", .storage=\n");
-    for (size_t i = 0; i < buff->capacity; i++) {
-        fprintf(file, "%x", buff->storage[i]);
+    byte *bytes = buff_storage_from_buff(buff);
+    size_t cap = buff->capacity;
+    size_t len = buff->length;
+    for (size_t i = 0; i < cap; i++) {
+        if (i == len) {
+            fprintf(file, " END ");
+        }
+        fprintf(file, "%x", bytes[i]);
     }
     fprintf(file, "\n}");
 }
@@ -310,7 +320,7 @@ QUEST(4, {
 })
 // Criar buffer que cabe exatamente 128 elementos
 QUEST(5, {
-    maybe_buff_t maybe_buffer = buff_create_with_capacity(99999999999999999);
+    maybe_buff_t maybe_buffer = buff_create_with_capacity(128);
     assert(!maybe_buffer.failure);
     buff_t buffer = maybe_buffer.buff;
     buff_debug_fprintf(&buffer, stdout);
