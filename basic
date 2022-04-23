@@ -1,0 +1,31 @@
+let TRUE = \x y. x
+let FALSE = \x y. y
+
+type BOOL = TRUE | FALSE
+
+let not = \b. b FALSE TRUE
+
+let and = \b1 b2. b1 b2 FALSE
+let or = \b1 b2. b1 TRUE b2
+let xor = \b1 b2. b1 (not b2) b2
+let xnor = \b1 b2. not (xor b1 b2)
+let nor = \b1 b2. and (not b1) (not b2)
+let nand = \b1 b2. or (xor b1 b2) nor b1 b2
+
+let Product = \left right. \fn. fn left right
+
+type Product = Left * Right
+
+let left = \p. p (\l _. l)
+let right = \p. p (\_ r. r)
+
+let Sum_l = \left. \on_l on_r. on_l left
+let Sum_r = \right. \on_l on_r. on_r right
+
+type Sum = Left | Right
+
+left (Product TRUE FALSE)
+
+let not = \b. b FALSE TRUE
+let xor = \b1 b2. b1 (not b2) b2
+let xnor = \b1 b2. not (xor b1 b2)

@@ -1,0 +1,122 @@
+type bool = true | false
+
+type IN = {1, 2, ...};
+
+class Sum T:
+    operator + a, b
+             +: T, T -> T
+             
+instance Sum on IN
+    operator + a, b = a + b
+
+class Mul T:
+    operator * a, b
+             *: T, T -> T
+             
+instance Mul on IN
+    operator * a, b = a * b
+
+class Eq T:
+    operator == a, b
+             ==: T, T -> bool
+
+instance Eq on IN
+    operator == a, b = extern function
+
+type IZ = {0, +-1, +-2, ...}, \/ n e IN => -a e IZ, a + (-a) = 0
+
+instance Sum on IZ
+    operator + a, b = a + b
+
+instance Mul on IZ
+    operator * a, b = a * b
+
+instance Eq on IZ
+    operator == a, b = extern function
+
+type IQ = {m/n : m e IZ, n e IZ, n != 0}
+
+class Convert A B:
+    conv a;
+    conv: A -> B
+
+instance Convert IZ IQ:
+    conv a = a/1;
+
+instance Sum on IQ
+    operator + a, b:
+             + m/n, k/e = (m*e+k*n)/k*e
+
+instance Mul on IQ
+    operator * a, b:
+             + m/n, k/e = (m*k)/h*e
+
+class Iterable T: Monad T;
+
+permutations: Iterable A, Iterable B -> Iterable (A, B)
+permutations as, bs = do
+           an <- as
+           bn <- bs
+           return (an, bn)
+
+prime_facs: IN -> Iterable IN
+prime_facs num = ;
+
+const_or_nil_depending_on_bool (T -> bool), T:
+                                    e, predicate = predicate e ? Const e : Nil
+
+where: Iterable T, (T -> bool) -> Iterable<T>
+where ts, predicate = ts `bind` (const_or_nil_depending_on_predicate `o` predicate)
+
+tpl_eq: (Eq A, Eq A) -> bool
+tpl_eq (a, b) = a == b
+
+tpl_first: (A, B) -> A
+tpl_first (a, _) = a
+
+nat_greater: IN, IN -> IN
+nat_greater  a, b -> a > b ? a : b
+
+mmc: IZ, IZ -> IZ
+mmc 1, b = 1;
+mmc a, 1 = 1;
+//mmc 1, 1 = 1;
+mmc a, b =  permutations
+                (prime_facs a)
+                (prime_facs b)
+            `where` tpl_eq
+            `fmap` tpl_first
+            `fold` 1 nat_greater
+
+instance Eq on IZ
+    operator == a, b = extern function
+
+
+instance 
+
+type IR;
+
+let Id x = x
+    Id: A -> A
+let o f g x = f(g(x))
+    o: (B -> C), (A -> B), A
+let h = f `o` g
+    h: A -> C
+let Id' = 1
+    Id': A -> IR
+let Id `o` f = f
+    Id `o`: (A -> B) -> (A -> B)
+let f `o` Id = f
+    f `o` Id: (A -> B) -> (A -> B)
+let (f `o` g)' x = (f' `o` g x) * g'(x)
+    (f `o` g)' x: (B -> C), (A -> B)
+
+class Derivable A:
+    postfix operator ' -> (A -> IR)
+
+instance DerivableComposition A B on f `o` g; \/ f, g: f e Derivable B, g e Derivable A
+    operator ' -> (A -> IR) = \x (f' `o` g) x * g' x
+
+
+              
+   
